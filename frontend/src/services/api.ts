@@ -84,29 +84,47 @@ class ApiService {
     return response.data;
   }
 
-  // Sentry endpoints
-  async getSentryProjects(): Promise<any[]> {
-    const response: AxiosResponse<any[]> = await this.api.get('/issues/sentry/projects');
+  async testOpenAIConnection(testData: { openai_api_key: string }): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.post('/workspaces/test-openai', testData);
     return response.data;
   }
 
-  async getSentryIssues(projectId?: string, status?: string): Promise<SentryIssue[]> {
+  // Sentry endpoints
+  async getSentryProjects(): Promise<any[]> {
+    const response: AxiosResponse<any[]> = await this.api.get('/issues/projects');
+    return response.data;
+  }
+
+  async getSentryIssues(projectId?: string, query?: string): Promise<SentryIssue[]> {
     const params = new URLSearchParams();
     if (projectId) params.append('project_id', projectId);
-    if (status) params.append('status', status);
+    if (query) params.append('query', query);
+    params.append('limit', '100'); // Get more issues by default
     
-    const response: AxiosResponse<SentryIssue[]> = await this.api.get(`/issues/sentry/issues?${params}`);
+    const response: AxiosResponse<any> = await this.api.get(`/issues/?${params}`);
+    return response.data.issues || [];
+  }
+
+  async getSentryIssue(issueId: string): Promise<SentryIssue> {
+    const response: AxiosResponse<SentryIssue> = await this.api.get(`/issues/${issueId}`);
+    return response.data;
+  }
+
+  async analyzeIssue(issueId: string): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.post(`/issues/${issueId}/analyze`);
     return response.data;
   }
 
   // Issues processing endpoints
   async processIssue(issueData: ProcessIssueRequest): Promise<ProcessedIssue> {
-    const response: AxiosResponse<ProcessedIssue> = await this.api.post('/issues/process', issueData);
+    const response: AxiosResponse<ProcessedIssue> = await this.api.post(`/issues/${issueData.sentry_issue_id}/analyze`, {
+      generate_specification: issueData.generate_specification
+    });
     return response.data;
   }
 
   async getProcessedIssues(): Promise<ProcessedIssue[]> {
-    const response: AxiosResponse<ProcessedIssue[]> = await this.api.get('/issues/processed');
+    const response: AxiosResponse<ProcessedIssue[]> = await this.api.get('/issues/processed/');
     return response.data;
   }
 

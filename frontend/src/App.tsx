@@ -7,6 +7,8 @@ import RegisterPage from './components/RegisterPage';
 import DashboardLayout from './components/DashboardLayout';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
+import IssuesPage from './pages/IssuesPage';
+import AnalysesPage from './pages/AnalysesPage';
 import './App.css';
 
 const theme = createTheme({
@@ -152,15 +154,15 @@ function AppContent() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage onPageChange={setCurrentPage} />;
       case 'issues':
-        return <div>Issues Page (Coming Soon)</div>;
-      case 'workspace':
-        return <div>Workspace Page (Coming Soon)</div>;
+        return <IssuesPage />;
+      case 'analyses':
+        return <AnalysesPage />;
       case 'settings':
         return <SettingsPage />;
       default:
-        return <DashboardPage />;
+        return <DashboardPage onPageChange={setCurrentPage} />;
     }
   };
 

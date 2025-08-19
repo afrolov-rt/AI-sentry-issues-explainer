@@ -14,21 +14,45 @@ import {
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Error as ErrorIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { ProcessedIssue, SentryIssue } from '../types';
 import { apiService } from '../services/api';
 import { useWorkspace } from '../hooks/useWorkspace';
 
-const DashboardPage: React.FC = () => {
+interface DashboardPageProps {
+  onPageChange?: (page: string) => void;
+}
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ onPageChange }) => {
   const [processedIssues, setProcessedIssues] = useState<ProcessedIssue[]>([]);
   const [sentryIssues, setSentryIssues] = useState<SentryIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analyzingIssues, setAnalyzingIssues] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
   const { workspace } = useWorkspace();
+
+  useEffect(() => {
+    // Задержка для предотвращения гидратации
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
   }, [workspace]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formatDate = (dateString: string | undefined): string => {
+    if (!mounted || !dateString) return 'Unknown date';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US');
+    } catch {
+      return 'Invalid date';
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -37,7 +61,7 @@ const DashboardPage: React.FC = () => {
 
       const [processedData, sentryData] = await Promise.allSettled([
         apiService.getProcessedIssues(),
-        workspace?.sentry_auth_token ? apiService.getSentryIssues() : Promise.resolve([])
+        workspace?.sentry_api_token ? apiService.getSentryIssues() : Promise.resolve([])
       ]);
 
       if (processedData.status === 'fulfilled') {
@@ -58,7 +82,40 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const handleAnalyzeIssue = async (issueId: string) => {
+    try {
+      console.log('Analyzing issue with ID:', issueId);
+      console.log('Full issue object for debugging:', sentryIssues.find(issue => issue.id === issueId));
+      setAnalyzingIssues(prev => new Set(prev).add(issueId));
+      
+      const result = await apiService.analyzeIssue(issueId);
+      console.log('Analysis result:', result);
+      
+      if (result.status === 'completed') {
+        // Refresh the dashboard to show updated data
+        await fetchDashboardData();
+        console.log('Analysis completed:', result);
+      } else if (result.status === 'analyzing') {
+        console.log('Analysis started, please wait...');
+        // You might want to show a notification here
+      } else {
+        console.error('Analysis failed');
+      }
+    } catch (err: any) {
+      console.error('Failed to analyze issue:', err);
+      console.error('Error details:', err.response?.data);
+      setError(err.response?.data?.detail || 'Failed to analyze issue');
+    } finally {
+      setAnalyzingIssues(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueId);
+        return newSet;
+      });
+    }
+  };
+
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'default';
     switch (status) {
       case 'completed': return 'success';
       case 'processing': return 'warning';
@@ -68,11 +125,11 @@ const DashboardPage: React.FC = () => {
   };
 
   const stats = {
-    totalProcessed: processedIssues.length,
-    completed: processedIssues.filter(issue => issue.status === 'completed').length,
-    processing: processedIssues.filter(issue => issue.status === 'processing').length,
-    failed: processedIssues.filter(issue => issue.status === 'failed').length,
-    totalSentry: sentryIssues.length,
+    totalProcessed: processedIssues?.length || 0,
+    completed: processedIssues?.filter(issue => issue?.status === 'completed').length || 0,
+    processing: processedIssues?.filter(issue => issue?.status === 'processing').length || 0,
+    failed: processedIssues?.filter(issue => issue?.status === 'failed').length || 0,
+    totalSentry: sentryIssues?.length || 0,
   };
 
   if (loading) {
@@ -98,7 +155,7 @@ const DashboardPage: React.FC = () => {
         </Alert>
       )}
 
-      {!workspace?.sentry_auth_token && (
+      {!workspace?.sentry_api_token && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           Configure Sentry API token in workspace settings to load data
         </Alert>
@@ -229,17 +286,17 @@ const DashboardPage: React.FC = () => {
           <Card>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                📋 Recent Processed Issues
+                📋 Recent Issues
               </Typography>
-              {processedIssues.length === 0 ? (
+              {sentryIssues.length === 0 ? (
                 <Box textAlign="center" py={4}>
                   <Typography color="textSecondary" sx={{ fontSize: '1.1rem' }}>
-                    No processed issues yet
+                    {workspace?.sentry_api_token ? 'No issues found' : 'Configure Sentry to view issues'}
                   </Typography>
                 </Box>
               ) : (
                 <Box>
-                  {processedIssues.slice(0, 5).map((issue) => (
+                  {sentryIssues.slice(0, 5).filter(issue => issue && issue.id).map((issue) => (
                     <Box key={issue.id} sx={{ 
                       mb: 2, 
                       p: 3, 
@@ -255,23 +312,54 @@ const DashboardPage: React.FC = () => {
                     }}>
                       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                         <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600 }}>
-                          {issue.sentry_issue_data.title}
+                          {issue.title || 'No title'}
                         </Typography>
                         <Chip 
-                          label={issue.status} 
-                          color={getStatusColor(issue.status) as any}
+                          label={issue.level || 'unknown'} 
+                          color="default"
                           size="small"
                           sx={{ fontWeight: 500 }}
                         />
                       </Box>
-                      <Typography variant="body2" color="textSecondary">
-                        {new Date(issue.created_at).toLocaleDateString('en-US')}
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                        {issue.project_name || 'Unknown project'} • {formatDate(issue.last_seen)}
                       </Typography>
-                      {issue.ai_analysis && (
-                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
-                          Priority: <Chip label={issue.ai_analysis.priority} size="small" variant="outlined" />
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                          Count: {issue.count || 0} • Users: {issue.userCount || 0}
                         </Typography>
-                      )}
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Chip 
+                            label={issue.status || 'unresolved'} 
+                            size="small"
+                            variant="outlined"
+                            color="default"
+                          />
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={analyzingIssues.has(issue.id) ? <CircularProgress size={16} /> : <PsychologyIcon />}
+                            disabled={analyzingIssues.has(issue.id)}
+                            sx={{ 
+                              minWidth: 'auto',
+                              px: 2,
+                              borderColor: '#3b82f6',
+                              color: '#3b82f6',
+                              '&:hover': {
+                                borderColor: '#2563eb',
+                                backgroundColor: '#eff6ff'
+                              },
+                              '&:disabled': {
+                                borderColor: '#d1d5db',
+                                color: '#6b7280'
+                              }
+                            }}
+                            onClick={() => handleAnalyzeIssue(issue.id)}
+                          >
+                            {analyzingIssues.has(issue.id) ? 'Analyzing...' : 'Analyze'}
+                          </Button>
+                        </Box>
+                      </Box>
                     </Box>
                   ))}
                 </Box>
@@ -308,9 +396,9 @@ const DashboardPage: React.FC = () => {
                         Sentry Organization:
                       </Typography>
                       <Chip 
-                        label={workspace.sentry_org_slug || 'Not configured'} 
+                        label={workspace.sentry_organization || 'Not configured'} 
                         size="small" 
-                        color={workspace.sentry_org_slug ? 'success' : 'default'}
+                        color="default"
                         variant="outlined"
                       />
                     </Box>
@@ -320,9 +408,9 @@ const DashboardPage: React.FC = () => {
                         Sentry Token:
                       </Typography>
                       <Chip 
-                        label={workspace.sentry_auth_token ? 'Configured' : 'Not configured'} 
+                        label={workspace.sentry_api_token ? 'Configured' : 'Not configured'} 
                         size="small" 
-                        color={workspace.sentry_auth_token ? 'success' : 'warning'}
+                        color="default"
                         variant="outlined"
                       />
                     </Box>
@@ -334,14 +422,14 @@ const DashboardPage: React.FC = () => {
                       <Chip 
                         label={workspace.openai_api_key ? 'Configured' : 'Not configured'} 
                         size="small" 
-                        color={workspace.openai_api_key ? 'success' : 'warning'}
+                        color="default"
                         variant="outlined"
                       />
                     </Box>
                   </Box>
                   
                   <Typography variant="body2" color="textSecondary" sx={{ mt: 3, fontSize: '0.9rem' }}>
-                    Created: {new Date(workspace.created_at).toLocaleDateString('en-US')}
+                    Created: {formatDate(workspace.created_at)}
                   </Typography>
                 </Box>
               ) : (
@@ -349,6 +437,72 @@ const DashboardPage: React.FC = () => {
                   <Typography color="textSecondary">
                     Loading workspace...
                   </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Processed Issues Section */}
+          <Card sx={{ mt: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  🔍 Recently Processed Issues
+                </Typography>
+                {onPageChange && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => onPageChange('analyses')}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    View All Analyses
+                  </Button>
+                )}
+              </Box>
+              {processedIssues.length === 0 ? (
+                <Box textAlign="center" py={4}>
+                  <Typography color="textSecondary" sx={{ fontSize: '1.1rem' }}>
+                    No processed issues yet
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  {processedIssues.slice(0, 5).filter(issue => issue && issue.id).map((issue) => (
+                    <Box key={issue.id} sx={{ 
+                      mb: 2, 
+                      p: 3, 
+                      border: '1px solid #e2e8f0', 
+                      borderRadius: 3,
+                      backgroundColor: '#fafafa',
+                      transition: 'all 0.2s ease-in-out',
+                      '&:hover': {
+                        backgroundColor: '#f1f5f9',
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 4px 12px rgb(0 0 0 / 0.1)',
+                      },
+                    }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                        <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600 }}>
+                          {issue.sentry_issue_data?.title || 'No title'}
+                        </Typography>
+                        <Chip 
+                          label={issue.status || 'unknown'} 
+                          color="default"
+                          size="small"
+                          sx={{ fontWeight: 500 }}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                        {formatDate(issue.created_at)}
+                      </Typography>
+                      {issue.ai_analysis && (
+                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
+                          Priority: <Chip label={issue.ai_analysis.priority || 'unknown'} size="small" variant="outlined" color="default" />
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
                 </Box>
               )}
             </CardContent>

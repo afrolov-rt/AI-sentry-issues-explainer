@@ -4,6 +4,7 @@ from app.auth.auth_service import get_current_user, get_current_active_user
 from app.models.schemas import User, Workspace, WorkspaceCreate, WorkspaceUpdate, UserRole
 from app.models.database import get_database
 from app.services.sentry_service import SentryService
+from app.services.openai_service import OpenAIService
 from bson import ObjectId
 from datetime import datetime
 import logging
@@ -27,7 +28,7 @@ async def create_workspace(
             "owner_id": current_user.id,
             "sentry_api_token": None,
             "sentry_organization": None,
-            "sentry_dsn": None,
+            "openai_api_key": None,
             "settings": {},
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
@@ -94,6 +95,8 @@ async def get_current_workspace(current_user: User = Depends(get_current_active_
         # Hide sensitive data
         if "sentry_api_token" in workspace and workspace["sentry_api_token"]:
             workspace["sentry_api_token"] = "***"
+        if "openai_api_key" in workspace and workspace["openai_api_key"]:
+            workspace["openai_api_key"] = "***"
         
         return workspace
         
@@ -170,32 +173,97 @@ async def test_sentry_connection(
             workspace_id=current_user.workspace_id
         )
         
-        is_connected = await sentry_service.test_connection()
+        result = await sentry_service.test_connection_detailed()
         
-        if is_connected:
+        if result["success"]:
             try:
                 projects = await sentry_service.get_projects()
-                return {
-                    "connected": True,
-                    "message": "Successfully connected to Sentry",
-                    "projects_count": len(projects),
-                    "projects": [{"id": p["id"], "name": p["name"]} for p in projects[:10]]
-                }
-            except Exception:
-                return {
-                    "connected": True,
-                    "message": "Connected to Sentry but couldn't fetch projects"
-                }
-        else:
-            return {
-                "connected": False,
-                "message": "Failed to connect to Sentry. Please check your API token and organization."
-            }
+                result["projects_count"] = len(projects)
+                result["projects"] = [{"id": p["id"], "name": p["name"]} for p in projects[:10]]
+                result["message"] = f"{result['message']}. Found {len(projects)} projects."
+            except Exception as e:
+                logger.warning(f"Could not fetch projects: {e}")
+                result["message"] = f"{result['message']} (Note: Could not fetch projects list)"
+        
+        return {
+            "connected": result["success"],
+            "message": result["message"],
+            **{k: v for k, v in result.items() if k not in ["success", "message"]}
+        }
             
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Sentry connection test failed: {e}")
+        return {
+            "connected": False,
+            "message": f"Connection test failed: {str(e)}"
+        }
+
+@router.post("/test-openai", response_model=dict)
+async def test_openai_connection(
+    test_data: dict,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Test OpenAI API connection for workspace"""
+    try:
+        api_key = test_data.get("openai_api_key")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="OpenAI API key is required")
+        
+        # Test the API key with a simple completion
+        openai_service = OpenAIService(
+            api_key=api_key,
+            model="gpt-3.5-turbo",  # Use cheaper model for testing
+            workspace_id=current_user.workspace_id
+        )
+        
+        # Test with a simple prompt
+        import openai
+        client = openai.AsyncOpenAI(api_key=api_key)
+        
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": "Hello! Please respond with 'API key is working' if you can read this."}
+            ],
+            max_tokens=20,
+            temperature=0
+        )
+        
+        if response.choices and response.choices[0].message:
+            return {
+                "connected": True,
+                "message": "OpenAI API key is valid and working",
+                "model_used": "gpt-3.5-turbo",
+                "tokens_used": response.usage.total_tokens if response.usage else None
+            }
+        else:
+            return {
+                "connected": False,
+                "message": "OpenAI API responded but with unexpected format"
+            }
+            
+    except openai.AuthenticationError:
+        return {
+            "connected": False,
+            "message": "Invalid OpenAI API key. Please check your key and try again."
+        }
+    except openai.RateLimitError:
+        return {
+            "connected": False,
+            "message": "OpenAI API rate limit exceeded. Your key is valid but you've reached your quota."
+        }
+    except openai.APIError as e:
+        return {
+            "connected": False,
+            "message": f"OpenAI API error: {str(e)}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OpenAI connection test failed: {e}")
         return {
             "connected": False,
             "message": f"Connection test failed: {str(e)}"

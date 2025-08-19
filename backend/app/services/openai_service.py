@@ -115,7 +115,7 @@ class OpenAIService:
             "project": issue.project_name,
             "culprit": issue.culprit,
             "count": issue.count,
-            "user_count": issue.user_count,
+            "user_count": issue.userCount,
             "first_seen": issue.first_seen.isoformat(),
             "last_seen": issue.last_seen.isoformat(),
             "tags": issue.tags,

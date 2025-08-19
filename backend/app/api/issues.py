@@ -52,12 +52,14 @@ async def get_issues(
             )
         
         # Fetch issues
+        logger.info(f"Attempting to fetch issues with query: {query}, limit: {limit}")
         result = await sentry_service.get_issues(
             project_id=project_id,
             query=query,
             limit=limit,
             cursor=cursor
         )
+        logger.info(f"Received {len(result.get('issues', []))} issues from Sentry service")
         
         # Check which issues are already processed in this workspace
         processed_issues = {}
@@ -200,25 +202,36 @@ async def analyze_issue(
         openai_model = workspace_settings.get("openai_model", "gpt-4") if workspace_settings else "gpt-4"
         
         openai_service = OpenAIService(
+            api_key=workspace.get("openai_api_key"),
             model=openai_model,
             workspace_id=current_user.workspace_id
         )
         
         # Fetch issue details from Sentry
+        logger.info(f"Fetching issue details for {issue_id} from Sentry")
         issue = await sentry_service.get_issue_details(issue_id)
         if not issue:
+            logger.warning(f"Issue {issue_id} not found in Sentry")
             raise HTTPException(status_code=404, detail="Issue not found in Sentry")
         
         # Get recent events for more context
         events = await sentry_service.get_issue_events(issue_id, limit=5)
         
         # Create or update processed issue record
+        from datetime import datetime
+        current_time = datetime.utcnow()
+        
         processed_issue_data = {
             "sentry_issue": issue.dict(),
+            "sentry_issue_data": issue.dict(),  # Add for frontend compatibility
             "status": IssueStatus.ANALYZING,
             "created_by": current_user.id,
-            "workspace_id": current_user.workspace_id
+            "workspace_id": current_user.workspace_id,
+            "updated_at": current_time
         }
+        
+        if not existing:
+            processed_issue_data["created_at"] = current_time
         
         if existing:
             await db.processed_issues.update_one(
@@ -244,7 +257,8 @@ async def analyze_issue(
                     {
                         "$set": {
                             "ai_analysis": analysis.dict(),
-                            "status": IssueStatus.COMPLETED
+                            "status": IssueStatus.COMPLETED,
+                            "updated_at": current_time
                         }
                     }
                 )
@@ -253,7 +267,12 @@ async def analyze_issue(
                 # Mark as failed
                 await db.processed_issues.update_one(
                     {"_id": doc_id},
-                    {"$set": {"status": IssueStatus.FAILED}}
+                    {
+                        "$set": {
+                            "status": IssueStatus.FAILED,
+                            "updated_at": current_time
+                        }
+                    }
                 )
                 status = IssueStatus.FAILED
                 
@@ -261,7 +280,12 @@ async def analyze_issue(
             logger.error(f"Analysis failed for issue {issue_id}: {e}")
             await db.processed_issues.update_one(
                 {"_id": doc_id},
-                {"$set": {"status": IssueStatus.FAILED}}
+                {
+                    "$set": {
+                        "status": IssueStatus.FAILED,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
             )
             status = IssueStatus.FAILED
             analysis = None
@@ -301,11 +325,15 @@ async def get_processed_issues(
         cursor = db.processed_issues.find(query).skip(skip).limit(limit).sort("created_at", -1)
         issues = await cursor.to_list(length=None)
         
-        # Convert ObjectId to string
+        # Convert ObjectId to string and normalize structure
         for issue in issues:
             if "_id" in issue:
                 issue["id"] = str(issue["_id"])
                 del issue["_id"]
+            
+            # Normalize sentry_issue field to sentry_issue_data for frontend compatibility
+            if "sentry_issue" in issue and "sentry_issue_data" not in issue:
+                issue["sentry_issue_data"] = issue["sentry_issue"]
         
         return issues
         
@@ -314,3 +342,47 @@ async def get_processed_issues(
     except Exception as e:
         logger.error(f"Failed to fetch processed issues: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch processed issues")
+
+@router.get("/projects", response_model=List[dict])
+async def get_sentry_projects(current_user: User = Depends(get_current_active_user)):
+    """Get list of Sentry projects"""
+    try:
+        if not current_user.workspace_id:
+            raise HTTPException(
+                status_code=400,
+                detail="No workspace found. Please create a workspace first."
+            )
+        
+        # Get workspace Sentry settings
+        db = get_database()
+        workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
+        
+        if not workspace or not workspace.get("sentry_api_token"):
+            raise HTTPException(
+                status_code=400,
+                detail="Sentry API token not configured in workspace. Please update workspace settings."
+            )
+        
+        # Initialize Sentry service with workspace credentials
+        sentry_service = SentryService(
+            api_token=workspace["sentry_api_token"],
+            organization=workspace.get("sentry_organization"),
+            workspace_id=current_user.workspace_id
+        )
+        
+        # Test connection
+        if not await sentry_service.test_connection():
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to connect to Sentry. Please check your API token and organization settings."
+            )
+        
+        # Get projects
+        projects = await sentry_service.get_projects()
+        return projects
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch Sentry projects: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch Sentry projects")

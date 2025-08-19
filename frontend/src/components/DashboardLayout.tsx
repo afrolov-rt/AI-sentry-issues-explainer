@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -20,7 +20,7 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   AccountCircle as AccountCircleIcon,
-  Folder as FolderIcon,
+  Psychology as AnalysisIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +39,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Задержка для предотвращения гидратации
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -51,8 +60,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'issues', label: 'Issues', icon: <BugReportIcon /> },
-    { id: 'workspace', label: 'Workspace', icon: <FolderIcon /> },
-    { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
+    { id: 'analyses', label: 'AI Analyses', icon: <AnalysisIcon /> },
   ];
 
   const drawer = (
@@ -112,6 +120,45 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </List>
       <Divider />
       <List sx={{ px: 2 }}>
+        <ListItemButton 
+          selected={currentPage === 'settings'}
+          onClick={() => {
+            onPageChange('settings');
+            setMobileOpen(false);
+          }}
+          sx={{
+            borderRadius: 3,
+            mb: 1,
+            transition: 'all 0.2s ease-in-out',
+            '&.Mui-selected': {
+              backgroundColor: '#6366f1',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#4f46e5',
+              },
+              '& .MuiListItemIcon-root': {
+                color: 'white',
+              },
+            },
+            '&:hover': {
+              backgroundColor: '#f1f5f9',
+              transform: 'translateX(4px)',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ 
+            minWidth: 40,
+            transition: 'color 0.2s ease-in-out',
+          }}>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Settings"
+            primaryTypographyProps={{
+              fontWeight: currentPage === 'settings' ? 600 : 500,
+            }}
+          />
+        </ListItemButton>
         <ListItemButton 
           onClick={handleLogout}
           sx={{
@@ -175,7 +222,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           }}>
             <AccountCircleIcon sx={{ color: '#6366f1' }} />
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {user?.username || user?.email}
+              {mounted ? (user?.username || user?.email || 'User') : 'Loading...'}
             </Typography>
           </Box>
         </Toolbar>

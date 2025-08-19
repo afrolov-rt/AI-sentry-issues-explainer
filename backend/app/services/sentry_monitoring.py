@@ -23,8 +23,8 @@ def init_sentry():
             traces_sample_rate=settings.APP_SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=settings.APP_SENTRY_PROFILES_SAMPLE_RATE,
             integrations=[
-                FastApiIntegration(auto_enable=True),
-                StarletteIntegration(auto_enable=True),
+                FastApiIntegration(),
+                StarletteIntegration(),
                 PyMongoIntegration(),
                 HttpxIntegration(),
                 LoggingIntegration(

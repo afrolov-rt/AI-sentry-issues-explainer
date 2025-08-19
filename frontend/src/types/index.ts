@@ -11,9 +11,8 @@ export interface Workspace {
   id: string;
   name: string;
   description?: string;
-  sentry_org_slug?: string;
-  sentry_auth_token?: string;
-  sentry_dsn?: string;
+  sentry_organization?: string;
+  sentry_api_token?: string;
   openai_api_key?: string;
   created_at: string;
   updated_at: string;
@@ -25,25 +24,17 @@ export interface SentryIssue {
   status: 'unresolved' | 'resolved' | 'ignored';
   level: 'error' | 'warning' | 'info' | 'debug';
   platform: string;
-  culprit: string;
-  firstSeen: string;
-  lastSeen: string;
+  culprit?: string;
+  message: string;
+  first_seen: string;
+  last_seen: string;
   count: number;
   userCount: number;
   permalink: string;
-  shortId: string;
-  project: {
-    id: string;
-    slug: string;
-    name: string;
-  };
-  metadata: {
-    title: string;
-    type: string;
-    value?: string;
-    filename?: string;
-    function?: string;
-  };
+  project_id: string;
+  project_name: string;
+  tags: Record<string, string>;
+  metadata: Record<string, any>;
 }
 
 export interface ProcessedIssue {
@@ -100,11 +91,8 @@ export interface CreateWorkspaceRequest {
 export interface UpdateWorkspaceRequest {
   name?: string;
   description?: string;
-  sentry_org_slug?: string;
-  sentry_auth_token?: string;
   sentry_organization?: string;
   sentry_api_token?: string;
-  sentry_dsn?: string;
   openai_api_key?: string;
 }
 

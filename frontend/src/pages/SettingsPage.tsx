@@ -27,15 +27,19 @@ const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testingOpenAI, setTestingOpenAI] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [openaiTestResult, setOpenaiTestResult] = useState<string | null>(null);
   const [showSentryToken, setShowSentryToken] = useState(false);
-  const [showSentryDsn, setShowSentryDsn] = useState(false);
+  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     sentry_api_token: '',
     sentry_organization: '',
-    sentry_dsn: '',
+    openai_api_key: '',
   });
 
   useEffect(() => {
@@ -43,9 +47,9 @@ const SettingsPage: React.FC = () => {
       setFormData({
         name: workspace.name || '',
         description: workspace.description || '',
-        sentry_api_token: workspace.sentry_auth_token || '',
-        sentry_organization: workspace.sentry_org_slug || '',
-        sentry_dsn: workspace.sentry_dsn || '',
+        sentry_api_token: workspace.sentry_api_token || '',
+        sentry_organization: workspace.sentry_organization || '',
+        openai_api_key: workspace.openai_api_key || '',
       });
     }
   }, [workspace]);
@@ -75,14 +79,14 @@ const SettingsPage: React.FC = () => {
       if (formData.description !== workspace?.description) {
         updateData.description = formData.description;
       }
-      if (formData.sentry_api_token !== workspace?.sentry_auth_token) {
+      if (formData.sentry_api_token !== workspace?.sentry_api_token) {
         updateData.sentry_api_token = formData.sentry_api_token;
       }
-      if (formData.sentry_organization !== workspace?.sentry_org_slug) {
+      if (formData.sentry_organization !== workspace?.sentry_organization) {
         updateData.sentry_organization = formData.sentry_organization;
       }
-      if (formData.sentry_dsn !== workspace?.sentry_dsn) {
-        updateData.sentry_dsn = formData.sentry_dsn;
+      if (formData.openai_api_key !== workspace?.openai_api_key) {
+        updateData.openai_api_key = formData.openai_api_key;
       }
 
       if (Object.keys(updateData).length === 0) {
@@ -97,6 +101,59 @@ const SettingsPage: React.FC = () => {
       setError(err.response?.data?.detail || 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestOpenAI = async () => {
+    if (!formData.openai_api_key.trim()) {
+      setOpenaiTestResult('Please enter an OpenAI API key first');
+      return;
+    }
+
+    try {
+      setTestingOpenAI(true);
+      setOpenaiTestResult(null);
+
+      const result = await apiService.testOpenAIConnection({
+        openai_api_key: formData.openai_api_key
+      });
+
+      if (result.connected) {
+        setOpenaiTestResult(`✅ ${result.message}`);
+      } else {
+        setOpenaiTestResult(`❌ ${result.message}`);
+      }
+    } catch (err: any) {
+      setOpenaiTestResult(`❌ Connection failed: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setTestingOpenAI(false);
+    }
+  };
+
+  const handleTestSentry = async () => {
+    if (!formData.sentry_api_token.trim() || !formData.sentry_organization.trim()) {
+      setTestResult('Please enter both Sentry API token and organization slug');
+      return;
+    }
+
+    try {
+      setTesting(true);
+      setTestResult(null);
+
+      const result = await apiService.testSentryConnection({
+        sentry_api_token: formData.sentry_api_token,
+        sentry_organization: formData.sentry_organization
+      });
+
+      if (result.connected) {
+        setTestResult(`✅ ${result.message}`);
+      } else {
+        setTestResult(`❌ ${result.message}`);
+      }
+    } catch (err: any) {
+      setTestResult(`❌ Connection failed: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -184,6 +241,68 @@ const SettingsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* OpenAI Integration */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+            🤖 OpenAI Integration
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="OpenAI API Key"
+              type={showOpenAIKey ? 'text' : 'password'}
+              value={formData.openai_api_key}
+              onChange={handleInputChange('openai_api_key')}
+              fullWidth
+              helperText="Your OpenAI API key for AI analysis of issues"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowOpenAIKey(!showOpenAIKey)}
+                      edge="end"
+                    >
+                      {showOpenAIKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                onClick={handleTestOpenAI}
+                disabled={testingOpenAI || !formData.openai_api_key.trim()}
+                sx={{ minWidth: 120 }}
+              >
+                {testingOpenAI ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Testing...
+                  </>
+                ) : (
+                  'Test OpenAI'
+                )}
+              </Button>
+              
+              {openaiTestResult && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: openaiTestResult.includes('✅') ? 'success.main' : 'error.main',
+                    flex: 1
+                  }}
+                >
+                  {openaiTestResult}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
       {/* Sentry Integration */}
       <Card>
         <CardContent sx={{ p: 3 }}>
@@ -221,38 +340,34 @@ const SettingsPage: React.FC = () => {
               helperText="Your Sentry organization identifier"
             />
 
-            <Divider sx={{ my: 2 }} />
-
-            <TextField
-              label="Sentry DSN (Data Source Name)"
-              type={showSentryDsn ? 'text' : 'password'}
-              value={formData.sentry_dsn}
-              onChange={handleInputChange('sentry_dsn')}
-              fullWidth
-              helperText="DSN for sending error events to your Sentry project (e.g., https://abc@o123.ingest.sentry.io/456)"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowSentryDsn(!showSentryDsn)}
-                      edge="end"
-                    >
-                      {showSentryDsn ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <Button
                 variant="outlined"
-                onClick={testSentryConnection}
-                disabled={loading || !formData.sentry_api_token || !formData.sentry_organization}
-                startIcon={loading ? <CircularProgress size={20} /> : <SettingsIcon />}
+                onClick={handleTestSentry}
+                disabled={testing || !formData.sentry_api_token.trim() || !formData.sentry_organization.trim()}
+                sx={{ minWidth: 120 }}
               >
-                Test Connection
+                {testing ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Testing...
+                  </>
+                ) : (
+                  'Test Sentry'
+                )}
               </Button>
+              
+              {testResult && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: testResult.includes('✅') ? 'success.main' : 'error.main',
+                    flex: 1
+                  }}
+                >
+                  {testResult}
+                </Typography>
+              )}
             </Box>
           </Box>
         </CardContent>

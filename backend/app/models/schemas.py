@@ -27,7 +27,7 @@ class SentryIssue(BaseModel):
     first_seen: datetime = Field(..., description="First occurrence")
     last_seen: datetime = Field(..., description="Last occurrence")
     count: int = Field(..., description="Number of occurrences")
-    user_count: int = Field(..., description="Number of affected users")
+    userCount: int = Field(default=0, description="Number of affected users", alias="user_count")
     permalink: str = Field(..., description="Sentry issue URL")
     stack_trace: Optional[List[Dict[str, Any]]] = Field(None, description="Stack trace data")
     tags: Dict[str, str] = Field(default_factory=dict, description="Issue tags")
@@ -110,7 +110,7 @@ class Workspace(BaseModel):
     owner_id: str = Field(..., description="Workspace owner user ID")
     sentry_api_token: Optional[str] = Field(None, description="Sentry API token")
     sentry_organization: Optional[str] = Field(None, description="Sentry organization slug")
-    sentry_dsn: Optional[str] = Field(None, description="Sentry DSN for this project")
+    openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
     settings: Dict[str, Any] = Field(default_factory=dict, description="Workspace settings")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -124,7 +124,7 @@ class WorkspaceUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Workspace description")
     sentry_api_token: Optional[str] = Field(None, description="Sentry API token")
     sentry_organization: Optional[str] = Field(None, description="Sentry organization slug")
-    sentry_dsn: Optional[str] = Field(None, description="Sentry DSN for this project")
+    openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
 
 class Token(BaseModel):
     access_token: str

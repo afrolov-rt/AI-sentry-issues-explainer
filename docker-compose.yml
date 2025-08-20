@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: sentry-ai-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: sentry_ai_explainer
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - sentry-ai-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sentry-ai-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/sentry_ai_explainer?authSource=admin
+      - DATABASE_NAME=sentry_ai_explainer
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=false
+      - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - APP_SENTRY_DSN=${APP_SENTRY_DSN}
+      - APP_SENTRY_ENVIRONMENT=production
+      - SENTRY_API_TOKEN=${SENTRY_API_TOKEN}
+      - SENTRY_ORG_SLUG=${SENTRY_ORG_SLUG}
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+    networks:
+      - sentry-ai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sentry-ai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - sentry-ai-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  sentry-ai-network:
+    driver: bridge

@@ -21,7 +21,6 @@ class SentryService:
         }
     
     async def test_connection(self) -> bool:
-        """Test Sentry API connection"""
         start_time = time.time()
         success = False
         error = None
@@ -35,7 +34,6 @@ class SentryService:
                 )
                 success = response.status_code == 200
                 
-                # Track API call
                 response_time = time.time() - start_time
                 track_sentry_api_call(
                     endpoint=f"organizations/{self.organization}",
@@ -50,7 +48,6 @@ class SentryService:
             error = e
             logger.error(f"Failed to test Sentry connection: {e}")
             
-            # Track failed API call
             response_time = time.time() - start_time
             track_sentry_api_call(
                 endpoint=f"organizations/{self.organization}",
@@ -174,7 +171,6 @@ class SentryService:
                 )
                 response.raise_for_status()
                 
-                # Track successful API call
                 response_time = time.time() - start_time
                 track_sentry_api_call(
                     endpoint=f"organizations/{self.organization}/projects",
@@ -189,7 +185,6 @@ class SentryService:
             error = e
             logger.error(f"Failed to fetch projects: {e}")
             
-            # Track failed API call
             response_time = time.time() - start_time
             track_sentry_api_call(
                 endpoint=f"organizations/{self.organization}/projects",
@@ -243,7 +238,6 @@ class SentryService:
                 issues_data = response.json()
                 logger.info(f"Received {len(issues_data)} issues from Sentry")
                 
-                # Parse issues into our schema
                 issues = []
                 for i, issue_data in enumerate(issues_data):
                     try:
@@ -256,7 +250,6 @@ class SentryService:
                 
                 logger.info(f"Successfully parsed {len(issues)} issues")
                 
-                # Get pagination info from headers
                 links = self._parse_link_header(response.headers.get("Link", ""))
                 
                 return {
@@ -281,7 +274,6 @@ class SentryService:
             logger.info(f"Using organization: {self.organization}")
             logger.info(f"Using base URL: {self.base_url}")
             
-            # Try organization-level endpoint first
             async with httpx.AsyncClient() as client:
                 org_url = f"{self.base_url}/organizations/{self.organization}/issues/{issue_id}/"
                 logger.info(f"Trying organization endpoint: {org_url}")
@@ -295,7 +287,6 @@ class SentryService:
                 logger.info(f"Organization endpoint response status: {response.status_code}")
                 
                 if response.status_code == 404:
-                    # If not found, try the global endpoint
                     global_url = f"{self.base_url}/issues/{issue_id}/"
                     logger.info(f"Trying global endpoint: {global_url}")
                     
@@ -317,7 +308,6 @@ class SentryService:
                 logger.info(f"Successfully fetched issue data: {issue_data.get('id')} - {issue_data.get('title', 'No title')}")
                 result = self._parse_issue(issue_data)
                 
-                # Track successful API call
                 response_time = time.time() - start_time
                 track_sentry_api_call(
                     endpoint=f"issues/{issue_id}",
@@ -332,7 +322,6 @@ class SentryService:
             error = e
             logger.error(f"Failed to fetch issue details for {issue_id}: {e}")
             
-            # Track failed API call
             response_time = time.time() - start_time
             track_sentry_api_call(
                 endpoint=f"issues/{issue_id}",
@@ -352,7 +341,6 @@ class SentryService:
         
         try:
             async with httpx.AsyncClient() as client:
-                # Try organization-level endpoint first
                 response = await client.get(
                     f"{self.base_url}/organizations/{self.organization}/issues/{issue_id}/events/",
                     headers=self.headers,
@@ -361,7 +349,6 @@ class SentryService:
                 )
                 
                 if response.status_code == 404:
-                    # If not found, try the global endpoint
                     response = await client.get(
                         f"{self.base_url}/issues/{issue_id}/events/",
                         headers=self.headers,
@@ -373,7 +360,6 @@ class SentryService:
                 success = True
                 result = response.json()
                 
-                # Track successful API call
                 response_time = time.time() - start_time
                 track_sentry_api_call(
                     endpoint=f"issues/{issue_id}/events",
@@ -388,7 +374,6 @@ class SentryService:
             error = e
             logger.error(f"Failed to fetch events for issue {issue_id}: {e}")
             
-            # Track failed API call
             response_time = time.time() - start_time
             track_sentry_api_call(
                 endpoint=f"issues/{issue_id}/events",
@@ -411,7 +396,6 @@ class SentryService:
             metadata = issue_data.get("metadata", {})
             logger.debug(f"Metadata: {metadata}")
             
-            # Safely get message from metadata or fallback to title
             message = ""
             if isinstance(metadata, dict):
                 message = metadata.get("value", "") or metadata.get("title", "") or issue_data.get("title", "")
@@ -419,7 +403,6 @@ class SentryService:
                 message = issue_data.get("title", "")
             logger.debug(f"Extracted message: {message}")
             
-            # Safely parse dates
             try:
                 first_seen = datetime.fromisoformat(issue_data["firstSeen"].replace("Z", "+00:00"))
                 logger.debug(f"Parsed firstSeen: {first_seen}")
@@ -434,7 +417,6 @@ class SentryService:
                 logger.warning(f"Failed to parse lastSeen for issue {issue_data.get('id')}: {e}")
                 last_seen = datetime.now()
             
-            # Parse tags safely
             tags = {}
             try:
                 raw_tags = issue_data.get("tags", [])
@@ -446,7 +428,6 @@ class SentryService:
                 logger.warning(f"Failed to parse tags for issue {issue_data.get('id')}: {e}")
                 tags = {}
             
-            # Safely parse count and userCount
             try:
                 count = issue_data.get("count", 0)
                 if isinstance(count, str):
@@ -505,10 +486,9 @@ class SentryService:
             if len(parts) != 2:
                 continue
             
-            url = parts[0].strip()[1:-1]  # Remove < >
-            rel = parts[1].strip().split("=")[1][1:-1]  # Remove quotes
+            url = parts[0].strip()[1:-1]
+            rel = parts[1].strip().split("=")[1][1:-1]
             
-            # Extract cursor from URL
             if "cursor=" in url:
                 cursor = url.split("cursor=")[1].split("&")[0]
                 links[rel] = {"url": url, "cursor": cursor}

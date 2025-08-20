@@ -49,7 +49,6 @@ const IssuesPage: React.FC = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [mounted, setMounted] = useState(false);
   
-  // Filters
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('is:unresolved');
   const [levelFilter, setLevelFilter] = useState<string>('');
@@ -57,7 +56,6 @@ const IssuesPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    // Задержка для предотвращения гидратации
     const timer = setTimeout(() => {
       setMounted(true);
     }, 0);
@@ -97,7 +95,6 @@ const IssuesPage: React.FC = () => {
       const issuesData = await apiService.getSentryIssues(selectedProject, query);
       setIssues(issuesData);
       
-      // Calculate total pages (assuming 25 issues per page)
       setTotalPages(Math.ceil(issuesData.length / 25));
       
     } catch (err: any) {
@@ -115,7 +112,6 @@ const IssuesPage: React.FC = () => {
 
       await apiService.analyzeIssue(issue.id);
       
-      // Refresh issues after analysis
       await loadIssues();
       
     } catch (err: any) {

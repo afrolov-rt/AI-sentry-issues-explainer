@@ -21,7 +21,6 @@ async def create_workspace(
     try:
         db = get_database()
         
-        # Create workspace
         workspace_dict = {
             "name": workspace_data.name,
             "description": workspace_data.description,
@@ -37,7 +36,6 @@ async def create_workspace(
         result = await db.workspaces.insert_one(workspace_dict)
         workspace_id = str(result.inserted_id)
         
-        # Update user's workspace_id
         await db.users.update_one(
             {"_id": ObjectId(current_user.id)},
             {"$set": {"workspace_id": workspace_id, "updated_at": datetime.utcnow()}}
@@ -62,7 +60,6 @@ async def get_workspaces(current_user: User = Depends(get_current_active_user)):
     try:
         db = get_database()
         
-        # Get workspaces where user is owner or member
         if current_user.workspace_id:
             workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
             if workspace:
@@ -92,7 +89,6 @@ async def get_current_workspace(current_user: User = Depends(get_current_active_
         workspace["id"] = str(workspace["_id"])
         del workspace["_id"]
         
-        # Hide sensitive data
         if "sentry_api_token" in workspace and workspace["sentry_api_token"]:
             workspace["sentry_api_token"] = "***"
         if "openai_api_key" in workspace and workspace["openai_api_key"]:
@@ -118,7 +114,6 @@ async def update_current_workspace(
         
         db = get_database()
         
-        # Check if user is owner
         workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
@@ -126,10 +121,8 @@ async def update_current_workspace(
         if workspace["owner_id"] != current_user.id:
             raise HTTPException(status_code=403, detail="Only workspace owner can update settings")
         
-        # Prepare update data
         update_data = {}
         
-        # Update fields from the Pydantic model
         workspace_dict = workspace_data.dict(exclude_unset=True)
         for field, value in workspace_dict.items():
             if value is not None:
@@ -140,7 +133,6 @@ async def update_current_workspace(
         
         update_data["updated_at"] = datetime.utcnow()
         
-        # Update workspace
         await db.workspaces.update_one(
             {"_id": ObjectId(current_user.workspace_id)},
             {"$set": update_data}
@@ -212,14 +204,12 @@ async def test_openai_connection(
         if not api_key:
             raise HTTPException(status_code=400, detail="OpenAI API key is required")
         
-        # Test the API key with a simple completion
         openai_service = OpenAIService(
             api_key=api_key,
-            model="gpt-3.5-turbo",  # Use cheaper model for testing
+            model="gpt-3.5-turbo",
             workspace_id=current_user.workspace_id
         )
         
-        # Test with a simple prompt
         import openai
         client = openai.AsyncOpenAI(api_key=api_key)
         

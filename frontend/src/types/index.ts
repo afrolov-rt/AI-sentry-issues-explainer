@@ -13,6 +13,7 @@ export interface Workspace {
   description?: string;
   sentry_organization?: string;
   sentry_api_token?: string;
+  sentry_test_dsn?: string;
   openai_api_key?: string;
   created_at: string;
   updated_at: string;

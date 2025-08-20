@@ -29,7 +29,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (error) {
       clearError();
     }
@@ -45,7 +44,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
     try {
       await login(formData);
     } catch (error) {
-      // Error is handled by AuthContext
     }
   };
 

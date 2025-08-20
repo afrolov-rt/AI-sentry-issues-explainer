@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="AI Sentry Issues Explainer API")
 
-# CORS configuration
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],

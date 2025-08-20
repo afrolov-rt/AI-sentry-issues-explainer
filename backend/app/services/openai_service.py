@@ -26,13 +26,10 @@ class OpenAIService:
         tokens_used = None
         
         try:
-            # Prepare context for AI analysis
             context = self._prepare_issue_context(sentry_issue, events_data)
             
-            # Create the prompt
             prompt = self._create_analysis_prompt(context)
             
-            # Call OpenAI API
             api_start_time = time.time()
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -50,7 +47,6 @@ class OpenAIService:
                 max_tokens=2000
             )
             
-            # Track OpenAI API call
             api_response_time = time.time() - api_start_time
             tokens_used = response.usage.total_tokens if response.usage else None
             
@@ -61,13 +57,11 @@ class OpenAIService:
                 response_time=api_response_time
             )
             
-            # Parse the response
             analysis_text = response.choices[0].message.content
             analysis = self._parse_analysis_response(analysis_text, sentry_issue.id)
             
             analysis_status = "completed"
             
-            # Track successful analysis
             analysis_time = time.time() - start_time
             track_issue_analysis(
                 issue_id=sentry_issue.id,
@@ -82,7 +76,6 @@ class OpenAIService:
             error = e
             logger.error(f"Failed to analyze issue {sentry_issue.id}: {e}")
             
-            # Track OpenAI API failure
             if 'api_start_time' in locals():
                 api_response_time = time.time() - api_start_time
                 track_openai_api_call(
@@ -93,7 +86,6 @@ class OpenAIService:
                     error=error
                 )
             
-            # Track failed analysis
             analysis_time = time.time() - start_time
             track_issue_analysis(
                 issue_id=sentry_issue.id,
@@ -126,7 +118,7 @@ class OpenAIService:
             context["stack_trace"] = issue.stack_trace
         
         if events_data:
-            context["recent_events"] = events_data[:3]  # Include only recent events
+            context["recent_events"] = events_data[:3]
         
         return context
     
@@ -175,7 +167,6 @@ Focus on:
     def _parse_analysis_response(self, response_text: str, issue_id: str) -> AIAnalysis:
         """Parse AI response into AIAnalysis object"""
         try:
-            # Extract JSON from response
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
             
@@ -185,7 +176,6 @@ Focus on:
             json_text = response_text[start_idx:end_idx]
             analysis_data = json.loads(json_text)
             
-            # Map priority string to enum
             priority_mapping = {
                 "low": IssuePriority.LOW,
                 "medium": IssuePriority.MEDIUM,
@@ -215,7 +205,6 @@ Focus on:
         except Exception as e:
             logger.error(f"Failed to parse AI response: {e}")
             
-            # Return basic analysis if parsing fails
             return AIAnalysis(
                 issue_id=issue_id,
                 summary="AI analysis parsing failed",

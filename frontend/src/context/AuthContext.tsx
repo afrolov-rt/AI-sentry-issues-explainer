@@ -81,7 +81,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('access_token');
     const savedUser = localStorage.getItem('user');
 
@@ -90,14 +89,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const user = JSON.parse(savedUser);
         dispatch({ type: 'AUTH_SUCCESS', payload: user });
         
-        // Verify token is still valid
         apiService.getCurrentUser()
           .then((currentUser) => {
             dispatch({ type: 'AUTH_SUCCESS', payload: currentUser });
             localStorage.setItem('user', JSON.stringify(currentUser));
           })
           .catch(() => {
-            // Token is invalid
             logout();
           });
       } catch (error) {

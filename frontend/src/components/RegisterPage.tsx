@@ -37,7 +37,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
       }));
     }
     
-    // Clear error when user starts typing
     if (error) {
       clearError();
     }
@@ -51,14 +50,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
     }
 
     if (formData.password !== confirmPassword) {
-      // Handle password mismatch
       return;
     }
 
     try {
       await register(formData);
     } catch (error) {
-      // Error is handled by AuthContext
     }
   };
 

@@ -26,7 +26,6 @@ async def get_settings(current_user: User = Depends(get_current_active_user)):
         settings = await db.settings.find_one({"workspace_id": current_user.workspace_id})
         
         if not settings:
-            # Return default settings
             return {
                 "openai_model": "gpt-4",
                 "auto_analyze": False,
@@ -57,7 +56,6 @@ async def update_settings(
         
         db = get_database()
         
-        # Prepare update data
         update_data = {}
         for field, value in settings_update.dict(exclude_unset=True).items():
             if value is not None:
@@ -68,7 +66,6 @@ async def update_settings(
         
         update_data["updated_at"] = datetime.utcnow()
         
-        # Upsert settings
         result = await db.settings.update_one(
             {"workspace_id": current_user.workspace_id},
             {"$set": update_data},

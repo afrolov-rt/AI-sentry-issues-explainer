@@ -27,7 +27,6 @@ async def get_issues(
                 detail="No workspace found. Please create a workspace first."
             )
         
-        # Get workspace Sentry settings
         db = get_database()
         workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
         
@@ -37,21 +36,18 @@ async def get_issues(
                 detail="Sentry API token not configured in workspace. Please update workspace settings."
             )
         
-        # Initialize Sentry service with workspace credentials
         sentry_service = SentryService(
             api_token=workspace["sentry_api_token"],
             organization=workspace.get("sentry_organization"),
             workspace_id=current_user.workspace_id
         )
         
-        # Test connection
         if not await sentry_service.test_connection():
             raise HTTPException(
                 status_code=400,
                 detail="Failed to connect to Sentry. Please check workspace Sentry settings."
             )
         
-        # Fetch issues
         logger.info(f"Attempting to fetch issues with query: {query}, limit: {limit}")
         result = await sentry_service.get_issues(
             project_id=project_id,
@@ -61,7 +57,6 @@ async def get_issues(
         )
         logger.info(f"Received {len(result.get('issues', []))} issues from Sentry service")
         
-        # Check which issues are already processed in this workspace
         processed_issues = {}
         if result["issues"]:
             issue_ids = [issue.id for issue in result["issues"]]
@@ -81,7 +76,6 @@ async def get_issues(
                 for doc in processed_docs
             }
         
-        # Add processing status to issues
         for issue in result["issues"]:
             issue_dict = issue.dict()
             issue_dict["processing_status"] = processed_issues.get(issue.id, {
@@ -117,20 +111,17 @@ async def get_issue_details(
         
         db = get_database()
         
-        # Check if issue is already processed in this workspace
         processed_issue = await db.processed_issues.find_one({
             "sentry_issue.id": issue_id,
             "workspace_id": current_user.workspace_id
         })
         
         if processed_issue:
-            # Convert ObjectId to string
             if "_id" in processed_issue:
                 processed_issue["id"] = str(processed_issue["_id"])
                 del processed_issue["_id"]
             return {"processed_issue": ProcessedIssue(**processed_issue)}
         
-        # Get workspace Sentry settings
         workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
         
         if not workspace or not workspace.get("sentry_api_token"):
@@ -139,7 +130,6 @@ async def get_issue_details(
                 detail="Sentry API token not configured in workspace"
             )
         
-        # Fetch from Sentry
         sentry_service = SentryService(
             api_token=workspace["sentry_api_token"],
             organization=workspace.get("sentry_organization"),
@@ -170,7 +160,6 @@ async def analyze_issue(
         
         db = get_database()
         
-        # Check if already being processed in this workspace
         existing = await db.processed_issues.find_one({
             "sentry_issue.id": issue_id,
             "workspace_id": current_user.workspace_id
@@ -182,7 +171,6 @@ async def analyze_issue(
                 detail="Issue is already being analyzed"
             )
         
-        # Get workspace settings
         workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
         if not workspace or not workspace.get("sentry_api_token"):
             raise HTTPException(
@@ -190,14 +178,12 @@ async def analyze_issue(
                 detail="Sentry API token not configured in workspace"
             )
         
-        # Initialize services
         sentry_service = SentryService(
             api_token=workspace["sentry_api_token"],
             organization=workspace.get("sentry_organization"),
             workspace_id=current_user.workspace_id
         )
         
-        # Get workspace settings for OpenAI model
         workspace_settings = await db.settings.find_one({"workspace_id": current_user.workspace_id})
         openai_model = workspace_settings.get("openai_model", "gpt-4") if workspace_settings else "gpt-4"
         
@@ -207,23 +193,20 @@ async def analyze_issue(
             workspace_id=current_user.workspace_id
         )
         
-        # Fetch issue details from Sentry
         logger.info(f"Fetching issue details for {issue_id} from Sentry")
         issue = await sentry_service.get_issue_details(issue_id)
         if not issue:
             logger.warning(f"Issue {issue_id} not found in Sentry")
             raise HTTPException(status_code=404, detail="Issue not found in Sentry")
         
-        # Get recent events for more context
         events = await sentry_service.get_issue_events(issue_id, limit=5)
         
-        # Create or update processed issue record
         from datetime import datetime
         current_time = datetime.utcnow()
         
         processed_issue_data = {
             "sentry_issue": issue.dict(),
-            "sentry_issue_data": issue.dict(),  # Add for frontend compatibility
+            "sentry_issue_data": issue.dict(),
             "status": IssueStatus.ANALYZING,
             "created_by": current_user.id,
             "workspace_id": current_user.workspace_id,
@@ -247,11 +230,9 @@ async def analyze_issue(
             doc_id = result.inserted_id
         
         try:
-            # Perform AI analysis
             analysis = await openai_service.analyze_issue(issue, events)
             
             if analysis:
-                # Update with successful analysis
                 await db.processed_issues.update_one(
                     {"_id": doc_id},
                     {
@@ -264,7 +245,6 @@ async def analyze_issue(
                 )
                 status = IssueStatus.COMPLETED
             else:
-                # Mark as failed
                 await db.processed_issues.update_one(
                     {"_id": doc_id},
                     {
@@ -316,22 +296,18 @@ async def get_processed_issues(
         
         db = get_database()
         
-        # Build query for workspace
         query = {"workspace_id": current_user.workspace_id}
         if status:
             query["status"] = status
         
-        # Fetch processed issues
         cursor = db.processed_issues.find(query).skip(skip).limit(limit).sort("created_at", -1)
         issues = await cursor.to_list(length=None)
         
-        # Convert ObjectId to string and normalize structure
         for issue in issues:
             if "_id" in issue:
                 issue["id"] = str(issue["_id"])
                 del issue["_id"]
             
-            # Normalize sentry_issue field to sentry_issue_data for frontend compatibility
             if "sentry_issue" in issue and "sentry_issue_data" not in issue:
                 issue["sentry_issue_data"] = issue["sentry_issue"]
         
@@ -353,7 +329,6 @@ async def get_sentry_projects(current_user: User = Depends(get_current_active_us
                 detail="No workspace found. Please create a workspace first."
             )
         
-        # Get workspace Sentry settings
         db = get_database()
         workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
         
@@ -363,21 +338,18 @@ async def get_sentry_projects(current_user: User = Depends(get_current_active_us
                 detail="Sentry API token not configured in workspace. Please update workspace settings."
             )
         
-        # Initialize Sentry service with workspace credentials
         sentry_service = SentryService(
             api_token=workspace["sentry_api_token"],
             organization=workspace.get("sentry_organization"),
             workspace_id=current_user.workspace_id
         )
         
-        # Test connection
         if not await sentry_service.test_connection():
             raise HTTPException(
                 status_code=400,
                 detail="Failed to connect to Sentry. Please check your API token and organization settings."
             )
         
-        # Get projects
         projects = await sentry_service.get_projects()
         return projects
         

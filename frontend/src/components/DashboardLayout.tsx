@@ -42,7 +42,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Задержка для предотвращения гидратации
     const timer = setTimeout(() => {
       setMounted(true);
     }, 0);
@@ -237,7 +236,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
+            keepMounted: true,
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
@@ -264,7 +263,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8, // Account for AppBar height
+          mt: 8,
           backgroundColor: '#f8fafc',
           minHeight: '100vh',
         }}

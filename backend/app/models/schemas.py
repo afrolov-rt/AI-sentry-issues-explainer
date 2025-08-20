@@ -110,6 +110,7 @@ class Workspace(BaseModel):
     owner_id: str = Field(..., description="Workspace owner user ID")
     sentry_api_token: Optional[str] = Field(None, description="Sentry API token")
     sentry_organization: Optional[str] = Field(None, description="Sentry organization slug")
+    sentry_test_dsn: Optional[str] = Field(None, description="Sentry DSN for generating test events")
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
     settings: Dict[str, Any] = Field(default_factory=dict, description="Workspace settings")
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -124,6 +125,7 @@ class WorkspaceUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Workspace description")
     sentry_api_token: Optional[str] = Field(None, description="Sentry API token")
     sentry_organization: Optional[str] = Field(None, description="Sentry organization slug")
+    sentry_test_dsn: Optional[str] = Field(None, description="Sentry DSN for generating test events")
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
 
 class Token(BaseModel):

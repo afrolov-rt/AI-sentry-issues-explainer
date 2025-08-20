@@ -28,27 +28,19 @@ def init_sentry():
                 PyMongoIntegration(),
                 HttpxIntegration(),
                 LoggingIntegration(
-                    level=logging.INFO,        # Capture info and above as breadcrumbs
-                    event_level=logging.ERROR  # Send errors as events
+                    level=logging.INFO,
+                    event_level=logging.ERROR
                 ),
             ],
-            # Performance Monitoring
             enable_tracing=True,
-            # Send default PII (personally identifiable information)
             send_default_pii=False,
-            # Attach stack traces to log messages
             attach_stacktrace=True,
-            # Set the maximum number of breadcrumbs
             max_breadcrumbs=50,
-            # Set custom tags
             default_integrations=True,
-            # Custom error filtering
             before_send=before_send_filter,
-            # Custom transaction filtering
             before_send_transaction=before_send_transaction_filter,
         )
         
-        # Set custom tags
         sentry_sdk.set_tag("component", "ai-sentry-explainer-backend")
         sentry_sdk.set_tag("version", settings.APP_SENTRY_RELEASE)
         
@@ -61,19 +53,15 @@ def init_sentry():
 
 def before_send_filter(event, hint):
     """Filter events before sending to Sentry"""
-    # Don't send events for certain types of errors
     if 'exc_info' in hint:
         exc_type, exc_value, tb = hint['exc_info']
         
-        # Skip HTTP 404 errors
         if hasattr(exc_value, 'status_code') and exc_value.status_code == 404:
             return None
         
-        # Skip validation errors (400 errors)
         if hasattr(exc_value, 'status_code') and exc_value.status_code == 400:
             return None
     
-    # Add custom context
     sentry_sdk.set_context("app_info", {
         "component": "backend",
         "service": "ai-sentry-explainer"
@@ -83,11 +71,9 @@ def before_send_filter(event, hint):
 
 def before_send_transaction_filter(event, hint):
     """Filter transactions before sending to Sentry"""
-    # Don't track health check transactions
     if event.get('transaction') == 'GET /health':
         return None
     
-    # Don't track OPTIONS requests
     if event.get('request', {}).get('method') == 'OPTIONS':
         return None
     

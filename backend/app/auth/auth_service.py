@@ -12,10 +12,10 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Password hashing
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Security scheme
+
 security = HTTPBearer()
 
 class AuthService:
@@ -43,7 +43,7 @@ class AuthService:
         if not self.verify_password(password, user_data["hashed_password"]):
             return None
         
-        # Convert ObjectId to string
+
         if "_id" in user_data:
             user_data["id"] = str(user_data["_id"])
             del user_data["_id"]
@@ -76,7 +76,7 @@ class AuthService:
             if user_data is None:
                 return None
             
-            # Convert ObjectId to string
+
             user_data["id"] = str(user_data["_id"])
             del user_data["_id"]
             
@@ -89,7 +89,7 @@ class AuthService:
         """Create new user"""
         db = get_database()
         
-        # Check if user already exists
+
         existing_user = await db.users.find_one({
             "$or": [
                 {"username": username},
@@ -103,10 +103,10 @@ class AuthService:
             else:
                 raise HTTPException(status_code=400, detail="Email already exists")
         
-        # Hash password
+
         hashed_password = self.get_password_hash(password)
         
-        # Create user data
+
         user_data = {
             "username": username,
             "email": email,
@@ -119,7 +119,7 @@ class AuthService:
             "updated_at": datetime.utcnow()
         }
         
-        # Insert user
+
         result = await db.users.insert_one(user_data)
         user_data["id"] = str(result.inserted_id)
         if "_id" in user_data:
@@ -127,7 +127,7 @@ class AuthService:
         
         return User(**user_data)
 
-# Global auth service instance
+
 auth_service = AuthService()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:

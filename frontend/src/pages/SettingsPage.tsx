@@ -39,6 +39,7 @@ const SettingsPage: React.FC = () => {
     description: '',
     sentry_api_token: '',
     sentry_organization: '',
+    sentry_test_dsn: '',
     openai_api_key: '',
   });
 
@@ -49,6 +50,7 @@ const SettingsPage: React.FC = () => {
         description: workspace.description || '',
         sentry_api_token: workspace.sentry_api_token || '',
         sentry_organization: workspace.sentry_organization || '',
+        sentry_test_dsn: workspace.sentry_test_dsn || '',
         openai_api_key: workspace.openai_api_key || '',
       });
     }
@@ -59,7 +61,6 @@ const SettingsPage: React.FC = () => {
       ...prev,
       [field]: event.target.value
     }));
-    // Clear messages when user starts typing
     if (error) setError(null);
     if (success) setSuccess(null);
   };
@@ -72,7 +73,6 @@ const SettingsPage: React.FC = () => {
 
       const updateData: any = {};
       
-      // Only include fields that have changed
       if (formData.name !== workspace?.name) {
         updateData.name = formData.name;
       }
@@ -84,6 +84,9 @@ const SettingsPage: React.FC = () => {
       }
       if (formData.sentry_organization !== workspace?.sentry_organization) {
         updateData.sentry_organization = formData.sentry_organization;
+      }
+      if (formData.sentry_test_dsn !== workspace?.sentry_test_dsn) {
+        updateData.sentry_test_dsn = formData.sentry_test_dsn;
       }
       if (formData.openai_api_key !== workspace?.openai_api_key) {
         updateData.openai_api_key = formData.openai_api_key;
@@ -338,6 +341,15 @@ const SettingsPage: React.FC = () => {
               onChange={handleInputChange('sentry_organization')}
               fullWidth
               helperText="Your Sentry organization identifier"
+            />
+
+            <TextField
+              label="Sentry Test DSN (Optional)"
+              value={formData.sentry_test_dsn}
+              onChange={handleInputChange('sentry_test_dsn')}
+              fullWidth
+              placeholder="https://your-dsn@sentry.io/project-id"
+              helperText="DSN for generating test events. If not provided, will use backend's APP_SENTRY_DSN"
             />
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>

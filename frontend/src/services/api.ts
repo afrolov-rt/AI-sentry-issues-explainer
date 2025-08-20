@@ -24,7 +24,6 @@ class ApiService {
       },
     });
 
-    // Add token to requests
     this.api.interceptors.request.use((config) => {
       const token = localStorage.getItem('access_token');
       if (token) {
@@ -33,7 +32,6 @@ class ApiService {
       return config;
     });
 
-    // Handle token expiration
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -47,7 +45,6 @@ class ApiService {
     );
   }
 
-  // Auth endpoints
   async login(credentials: LoginRequest): Promise<AuthTokens> {
     const response: AxiosResponse<AuthTokens> = await this.api.post('/auth/login', credentials);
     return response.data;
@@ -63,7 +60,6 @@ class ApiService {
     return response.data;
   }
 
-  // Workspace endpoints
   async createWorkspace(workspaceData: CreateWorkspaceRequest): Promise<Workspace> {
     const response: AxiosResponse<Workspace> = await this.api.post('/workspaces/', workspaceData);
     return response.data;
@@ -89,7 +85,6 @@ class ApiService {
     return response.data;
   }
 
-  // Sentry endpoints
   async getSentryProjects(): Promise<any[]> {
     const response: AxiosResponse<any[]> = await this.api.get('/issues/projects');
     return response.data;
@@ -99,7 +94,7 @@ class ApiService {
     const params = new URLSearchParams();
     if (projectId) params.append('project_id', projectId);
     if (query) params.append('query', query);
-    params.append('limit', '100'); // Get more issues by default
+    params.append('limit', '100');
     
     const response: AxiosResponse<any> = await this.api.get(`/issues/?${params}`);
     return response.data.issues || [];
@@ -115,7 +110,6 @@ class ApiService {
     return response.data;
   }
 
-  // Issues processing endpoints
   async processIssue(issueData: ProcessIssueRequest): Promise<ProcessedIssue> {
     const response: AxiosResponse<ProcessedIssue> = await this.api.post(`/issues/${issueData.sentry_issue_id}/analyze`, {
       generate_specification: issueData.generate_specification
@@ -137,7 +131,6 @@ class ApiService {
     await this.api.delete(`/issues/processed/${issueId}`);
   }
 
-  // Settings endpoints
   async getSettings(): Promise<any> {
     const response: AxiosResponse<any> = await this.api.get('/settings/');
     return response.data;
@@ -148,7 +141,6 @@ class ApiService {
     return response.data;
   }
 
-  // Debug endpoints (if in development)
   async getDebugInfo(): Promise<any> {
     const response: AxiosResponse<any> = await this.api.get('/debug/info');
     return response.data;
@@ -156,6 +148,29 @@ class ApiService {
 
   async healthCheck(): Promise<any> {
     const response: AxiosResponse<any> = await this.api.get('/health');
+    return response.data;
+  }
+
+  async generateRandomSentryEvent(eventType?: string, count?: number): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.post('/sentry/generate-random-event', {
+      event_type: eventType,
+      count: count
+    });
+    return response.data;
+  }
+
+  async getSentryStatus(): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.get('/sentry/sentry-status');
+    return response.data;
+  }
+
+  async getSentryStatusPublic(): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.get('/sentry/sentry-status-public');
+    return response.data;
+  }
+
+  async getEventTemplates(): Promise<any> {
+    const response: AxiosResponse<any> = await this.api.get('/sentry/event-templates');
     return response.data;
   }
 }

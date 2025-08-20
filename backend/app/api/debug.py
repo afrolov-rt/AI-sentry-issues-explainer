@@ -16,7 +16,6 @@ router = APIRouter()
 async def test_sentry_error(current_user: User = Depends(get_current_active_user)):
     """Test endpoint to generate a Sentry error event"""
     try:
-        # Set user context
         set_user_context(
             user_id=current_user.id,
             username=current_user.username,
@@ -24,15 +23,12 @@ async def test_sentry_error(current_user: User = Depends(get_current_active_user
             workspace_id=current_user.workspace_id
         )
         
-        # Set workspace context if available
         if current_user.workspace_id:
             set_workspace_context(workspace_id=current_user.workspace_id)
         
-        # Generate a test error
         raise ValueError("This is a test error for Sentry monitoring")
         
     except Exception as e:
-        # Capture exception with context
         capture_exception_with_context(e, {
             "test_type": "manual_error_test",
             "user_id": current_user.id,
@@ -45,7 +41,6 @@ async def test_sentry_error(current_user: User = Depends(get_current_active_user
 @router.post("/test-message")
 async def test_sentry_message(current_user: User = Depends(get_current_active_user)):
     """Test endpoint to send a message to Sentry"""
-    # Set user context
     set_user_context(
         user_id=current_user.id,
         username=current_user.username,
@@ -53,7 +48,6 @@ async def test_sentry_message(current_user: User = Depends(get_current_active_us
         workspace_id=current_user.workspace_id
     )
     
-    # Send test message
     capture_message_with_context(
         "Test message from AI Sentry Explainer",
         level="info",
@@ -86,11 +80,9 @@ async def get_sentry_status():
 async def simple_test_error():
     """Simple test endpoint to generate a Sentry error without authentication"""
     try:
-        # Generate a test error
         raise ValueError("This is a simple test error for Sentry monitoring")
         
     except Exception as e:
-        # Capture exception with basic context
         capture_exception_with_context(e, {
             "test_type": "simple_error_test",
             "endpoint": "/debug/simple-test-error"
@@ -101,7 +93,6 @@ async def simple_test_error():
 @router.post("/simple-test-message")
 async def simple_test_message():
     """Simple test endpoint to send a message to Sentry without authentication"""
-    # Send test message
     capture_message_with_context(
         "Simple test message from AI Sentry Explainer",
         level="info",
@@ -117,14 +108,11 @@ async def simple_test_message():
 async def test_real_error():
     """Test real application error with full context"""
     try:
-        # Simulate a real application error
         fake_data = {"issues": [{"id": "test"}]}
         
-        # This will cause a KeyError - typical application bug
         issue_id = fake_data["issues"][0]["non_existent_field"]
         
     except Exception as e:
-        # Capture with rich context like a real application would
         capture_exception_with_context(e, {
             "test_type": "real_application_error",
             "endpoint": "/debug/test-real-error", 
@@ -146,7 +134,6 @@ async def test_sentry_api_connection():
         import httpx
         from config.settings import settings
         
-        # Get default settings
         default_token = settings.SENTRY_API_TOKEN
         default_org = settings.SENTRY_ORG_SLUG
         base_url = settings.SENTRY_BASE_URL
@@ -172,7 +159,6 @@ async def test_sentry_api_connection():
                 "debug_info": debug_info
             }
         
-        # Test connection with default settings
         headers = {
             "Authorization": f"Bearer {default_token}",
             "Content-Type": "application/json"
@@ -261,7 +247,6 @@ async def test_sentry_with_params(test_data: dict):
                 "debug_info": debug_info
             }
         
-        # Test connection with provided settings
         headers = {
             "Authorization": f"Bearer {api_token}",
             "Content-Type": "application/json"

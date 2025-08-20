@@ -11,7 +11,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase Admin SDK
+
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
     try:
@@ -28,7 +28,7 @@ def initialize_firebase():
         logger.error(f"Failed to initialize Firebase: {e}")
         return False
 
-# Security scheme
+
 security = HTTPBearer()
 
 class FirebaseAuth:
@@ -55,11 +55,11 @@ class FirebaseAuth:
         """Get existing user or create new one"""
         db = get_database()
         
-        # Check if user already exists
+
         existing_user = await db.users.find_one({"firebase_uid": firebase_user["uid"]})
         
         if existing_user:
-            # Update user info if needed
+
             update_data = {}
             if existing_user.get("email") != firebase_user.get("email"):
                 update_data["email"] = firebase_user.get("email")
@@ -75,7 +75,7 @@ class FirebaseAuth:
             
             return User(**existing_user)
         
-        # Create new user
+
         new_user = User(
             firebase_uid=firebase_user["uid"],
             email=firebase_user.get("email", ""),
@@ -89,7 +89,7 @@ class FirebaseAuth:
         
         return User(**user_dict)
 
-# Global Firebase auth instance
+
 firebase_auth = FirebaseAuth()
 
 async def get_current_user(

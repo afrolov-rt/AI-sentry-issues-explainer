@@ -171,7 +171,16 @@ const AnalysesPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box p={1.5} bgcolor="primary.main" borderRadius="50%" color="white">
+                <Box 
+                  bgcolor="primary.main" 
+                  borderRadius="50%" 
+                  color="white"
+                  width={56}
+                  height={56}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <AnalysisIcon />
                 </Box>
                 <Box>
@@ -190,7 +199,16 @@ const AnalysesPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box p={1.5} bgcolor="success.main" borderRadius="50%" color="white">
+                <Box 
+                  bgcolor="success.main" 
+                  borderRadius="50%" 
+                  color="white"
+                  width={56}
+                  height={56}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <CheckIcon />
                 </Box>
                 <Box>
@@ -209,7 +227,16 @@ const AnalysesPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box p={1.5} bgcolor="error.main" borderRadius="50%" color="white">
+                <Box 
+                  bgcolor="error.main" 
+                  borderRadius="50%" 
+                  color="white"
+                  width={56}
+                  height={56}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <ErrorIcon />
                 </Box>
                 <Box>
@@ -228,7 +255,16 @@ const AnalysesPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box p={1.5} bgcolor="warning.main" borderRadius="50%" color="white">
+                <Box 
+                  bgcolor="warning.main" 
+                  borderRadius="50%" 
+                  color="white"
+                  width={56}
+                  height={56}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <ClockIcon />
                 </Box>
                 <Box>
@@ -262,12 +298,15 @@ const AnalysesPage: React.FC = () => {
             <Box flex="1" minWidth="350px" maxWidth="400px" key={analysis.id}>
               <Card sx={{ 
                 height: '100%',
+                cursor: 'pointer',
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: 3,
                 },
-              }}>
+              }}
+              onClick={() => handleViewDetails(analysis)}
+              >
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box display="flex" alignItems="center" gap={1}>
@@ -278,7 +317,10 @@ const AnalysesPage: React.FC = () => {
                     </Box>
                     <IconButton 
                       size="small" 
-                      onClick={() => handleViewDetails(analysis)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(analysis);
+                      }}
                       sx={{ ml: 1 }}
                     >
                       <ViewIcon fontSize="small" />

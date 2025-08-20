@@ -2,6 +2,9 @@
 
 An intelligent web application that transforms Sentry error reports into detailed AI-powered analysis and actionable technical insights for developers.
 
+Webpage of the project:
+https://ai-sentry.tvoysad.by/
+
 ## 🚀 Overview
 
 This application connects to your Sentry instance, fetches error reports and issues, and generates comprehensive AI-powered analysis including root cause identification, impact assessment, and suggested fixes. It features an intuitive dashboard with real-time Sentry event generation for testing and a comprehensive analysis management system.

@@ -6,7 +6,7 @@ services:
     container_name: sentry-ai-mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27018:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password123
@@ -23,14 +23,14 @@ services:
     container_name: sentry-ai-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8881:8000"
     environment:
       - MONGODB_URI=mongodb://admin:password123@mongodb:27017/sentry_ai_explainer?authSource=admin
       - DATABASE_NAME=sentry_ai_explainer
       - API_HOST=0.0.0.0
       - API_PORT=8000
       - DEBUG=false
-      - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+      - ALLOWED_ORIGINS=*
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - APP_SENTRY_DSN=${APP_SENTRY_DSN}
@@ -56,9 +56,9 @@ services:
     container_name: sentry-ai-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3001:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - REACT_APP_API_URL=http://localhost:8881/api/v1
       - NODE_ENV=production
     depends_on:
       - backend

@@ -99,6 +99,46 @@ async def get_issues(
         logger.error(f"Failed to fetch issues: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch issues from Sentry")
 
+@router.get("/projects", response_model=List[dict])
+async def get_sentry_projects(current_user: User = Depends(get_current_active_user)):
+    """Get list of Sentry projects"""
+    try:
+        if not current_user.workspace_id:
+            raise HTTPException(
+                status_code=400,
+                detail="No workspace found. Please create a workspace first."
+            )
+        
+        db = get_database()
+        workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
+        
+        if not workspace or not workspace.get("sentry_api_token"):
+            raise HTTPException(
+                status_code=400,
+                detail="Sentry API token not configured in workspace. Please update workspace settings."
+            )
+        
+        sentry_service = SentryService(
+            api_token=workspace["sentry_api_token"],
+            organization=workspace.get("sentry_organization"),
+            workspace_id=current_user.workspace_id
+        )
+        
+        if not await sentry_service.test_connection():
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to connect to Sentry. Please check your API token and organization settings."
+            )
+        
+        projects = await sentry_service.get_projects()
+        return projects
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch Sentry projects: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch Sentry projects")
+
 @router.get("/{issue_id}", response_model=dict)
 async def get_issue_details(
     issue_id: str,
@@ -318,43 +358,3 @@ async def get_processed_issues(
     except Exception as e:
         logger.error(f"Failed to fetch processed issues: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch processed issues")
-
-@router.get("/projects", response_model=List[dict])
-async def get_sentry_projects(current_user: User = Depends(get_current_active_user)):
-    """Get list of Sentry projects"""
-    try:
-        if not current_user.workspace_id:
-            raise HTTPException(
-                status_code=400,
-                detail="No workspace found. Please create a workspace first."
-            )
-        
-        db = get_database()
-        workspace = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
-        
-        if not workspace or not workspace.get("sentry_api_token"):
-            raise HTTPException(
-                status_code=400,
-                detail="Sentry API token not configured in workspace. Please update workspace settings."
-            )
-        
-        sentry_service = SentryService(
-            api_token=workspace["sentry_api_token"],
-            organization=workspace.get("sentry_organization"),
-            workspace_id=current_user.workspace_id
-        )
-        
-        if not await sentry_service.test_connection():
-            raise HTTPException(
-                status_code=400,
-                detail="Failed to connect to Sentry. Please check your API token and organization settings."
-            )
-        
-        projects = await sentry_service.get_projects()
-        return projects
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to fetch Sentry projects: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch Sentry projects")

@@ -10,6 +10,8 @@ the `DATABASE_URL` environment variable, in SQLAlchemy async form:
 Start PostgreSQL and apply the schema with:
 
 ```bash
+export POSTGRES_PASSWORD='choose-a-local-password'
+export SECRET_KEY='choose-a-local-signing-key'
 docker compose up --build
 ```
 

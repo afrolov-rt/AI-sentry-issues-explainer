@@ -11,10 +11,7 @@ class Settings:
     API_PORT = int(os.getenv("API_PORT", 8000))
     DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes", "on")
     
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://sentry:sentry@localhost:5432/sentry_ai_explainer"
-    )
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
     
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
@@ -23,7 +20,7 @@ class Settings:
     SENTRY_ORG_SLUG = os.getenv("SENTRY_ORG_SLUG", "")
     SENTRY_BASE_URL = os.getenv("SENTRY_BASE_URL", "https://sentry.io/api/0")
     
-    SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY = os.getenv("SECRET_KEY", "")
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
     

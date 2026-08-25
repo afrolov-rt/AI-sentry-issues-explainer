@@ -162,23 +162,23 @@ API_PORT=8000
 DATABASE_URL=postgresql+asyncpg://sentry:sentry@localhost:5432/sentry_ai_explainer
 
 # OpenAI API (Required for AI analysis)
-OPENAI_API_KEY=your-openai-api-key-here
+OPENAI_API_KEY=<set-in-runtime>
 OPENAI_MODEL=gpt-4
 
 # Sentry Configuration (Optional - can be configured per workspace)
-SENTRY_API_TOKEN=your-sentry-api-token
-SENTRY_ORG_SLUG=your-organization-slug
+SENTRY_API_TOKEN=<set-in-runtime>
+SENTRY_ORG_SLUG=<set-in-runtime>
 SENTRY_BASE_URL=https://sentry.io/api/0
 
 # Application Sentry DSN (for event generation and monitoring)
-APP_SENTRY_DSN=your-sentry-dsn-here
+APP_SENTRY_DSN=<set-in-runtime>
 APP_SENTRY_ENVIRONMENT=development
 APP_SENTRY_RELEASE=1.0.0
 APP_SENTRY_TRACES_SAMPLE_RATE=0.1
 APP_SENTRY_PROFILES_SAMPLE_RATE=0.1
 
 # Security
-SECRET_KEY=your-secret-key-for-development
+SECRET_KEY=<set-in-runtime>
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # CORS

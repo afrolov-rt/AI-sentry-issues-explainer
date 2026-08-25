@@ -80,6 +80,8 @@ class Database:
         self.session_factory = None
 
     async def connect(self) -> None:
+        if not settings.DATABASE_URL:
+            raise RuntimeError("DATABASE_URL must be configured")
         self.engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
         async with self.engine.connect():

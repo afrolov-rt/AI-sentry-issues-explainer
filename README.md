@@ -159,7 +159,7 @@ API_HOST=0.0.0.0
 API_PORT=8000
 
 # Database
-DATABASE_URL=postgresql+asyncpg://sentry:sentry@localhost:5432/sentry_ai_explainer
+DATABASE_URL=<set-in-runtime>
 
 # OpenAI API (Required for AI analysis)
 OPENAI_API_KEY=<set-in-runtime>

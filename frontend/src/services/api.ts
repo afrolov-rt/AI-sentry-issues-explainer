@@ -14,7 +14,7 @@ import {
 
 class ApiService {
   private api: AxiosInstance;
-  private baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+  private baseURL = process.env.REACT_APP_API_URL || '/api/v1';
 
   constructor() {
     this.api = axios.create({
@@ -61,8 +61,8 @@ class ApiService {
   }
 
   async createWorkspace(workspaceData: CreateWorkspaceRequest): Promise<Workspace> {
-    const response: AxiosResponse<Workspace> = await this.api.post('/workspaces/', workspaceData);
-    return response.data;
+    const response: AxiosResponse<{ workspace: Workspace }> = await this.api.post('/workspaces/', workspaceData);
+    return response.data.workspace;
   }
 
   async getCurrentWorkspace(): Promise<Workspace> {
@@ -147,7 +147,7 @@ class ApiService {
   }
 
   async healthCheck(): Promise<any> {
-    const response: AxiosResponse<any> = await this.api.get('/health');
+    const response: AxiosResponse<any> = await axios.get('/health');
     return response.data;
   }
 

@@ -11,8 +11,10 @@ class Settings:
     API_PORT = int(os.getenv("API_PORT", 8000))
     DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes", "on")
     
-    MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-    DATABASE_NAME = os.getenv("DATABASE_NAME", "sentry_ai_explainer")
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://sentry:sentry@localhost:5432/sentry_ai_explainer"
+    )
     
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")

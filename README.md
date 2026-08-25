@@ -83,11 +83,11 @@ AI-sentry-issues-explainer/
 ### Backend
 - **FastAPI** - Modern, fast web framework for building APIs
 - **Python 3.8+** - Core backend language
-- **MongoDB** - NoSQL database for flexible data storage
+- **PostgreSQL** - Relational store for users, workspaces, settings, and analyses
 - **OpenAI API** - GPT-4 integration for intelligent analysis
 - **Sentry SDK** - Event generation and monitoring
 - **Pydantic** - Data validation and settings management
-- **Motor** - Async MongoDB driver
+- **SQLAlchemy + asyncpg** - Async PostgreSQL persistence
 
 ### Frontend
 - **React 18** - Modern frontend framework with hooks
@@ -103,7 +103,7 @@ AI-sentry-issues-explainer/
 
 - **Python 3.8+** with pip
 - **Node.js 16+** with npm
-- **MongoDB** (local or cloud instance)
+- **PostgreSQL** (local, cloud, or aidrop.it managed instance)
 - **OpenAI API Key** (for AI analysis)
 - **Sentry Account** with DSN (for event generation and monitoring)
 
@@ -144,9 +144,8 @@ AI-sentry-issues-explainer/
 
 4. **Database Setup**
    ```bash
-   # Ensure MongoDB is running
-   # Default connection: mongodb://localhost:27017
-   # Database will be created automatically
+   # Ensure PostgreSQL is running, then apply the schema
+   cd backend && alembic -c alembic.ini upgrade head
    ```
 
 ### Configuration
@@ -160,8 +159,7 @@ API_HOST=0.0.0.0
 API_PORT=8000
 
 # Database
-MONGODB_URI=mongodb://localhost:27017
-DATABASE_NAME=sentry_ai_explainer_test
+DATABASE_URL=postgresql+asyncpg://sentry:sentry@localhost:5432/sentry_ai_explainer
 
 # OpenAI API (Required for AI analysis)
 OPENAI_API_KEY=your-openai-api-key-here
@@ -252,7 +250,7 @@ The frontend automatically connects to `http://localhost:8000` by default. No ad
 
 - **Backend**: FastAPI with async/await patterns
 - **Frontend**: Modern React with TypeScript and hooks
-- **Database**: MongoDB with async operations
+- **Database**: PostgreSQL with async SQLAlchemy operations
 - **API**: RESTful design with OpenAPI documentation
 - **AI Integration**: OpenAI GPT-4 for intelligent analysis
 - **Event Generation**: Sentry SDK for testing and monitoring
@@ -263,7 +261,7 @@ The frontend automatically connects to `http://localhost:8000` by default. No ad
 - `OpenAIService`: AI analysis engine
 - `SentryService`: Sentry API integration
 - `SentryEventGenerator`: Test event generation
-- `DatabaseService`: MongoDB operations
+- `DatabaseService`: PostgreSQL operations
 
 #### Frontend Pages
 - `DashboardPage`: Main overview with statistics and event generation

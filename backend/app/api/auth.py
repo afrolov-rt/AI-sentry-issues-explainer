@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=Token)
 async def register_user(user_data: UserCreate):
     """Register a new user"""
     try:
@@ -20,7 +20,7 @@ async def register_user(user_data: UserCreate):
             role=user_data.role
         )
         
-        return UserResponse(
+        user_response = UserResponse(
             id=user.id,
             username=user.username,
             email=user.email,
@@ -30,6 +30,8 @@ async def register_user(user_data: UserCreate):
             workspace_id=user.workspace_id,
             created_at=user.created_at
         )
+        access_token = auth_service.create_access_token(data={"sub": user.id})
+        return Token(access_token=access_token, token_type="bearer", user=user_response)
         
     except HTTPException:
         raise

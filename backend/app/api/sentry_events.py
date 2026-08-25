@@ -5,9 +5,8 @@ from pydantic import BaseModel, Field
 from app.services.sentry_event_generator import sentry_event_generator
 from app.auth.auth_service import get_current_active_user
 from app.models.schemas import User, Workspace
-from app.models.database import get_database
+from app.models.database import get_workspace
 from config.settings import settings
-from bson import ObjectId
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,14 +17,16 @@ async def get_current_workspace(current_user: User = Depends(get_current_active_
     if not current_user.workspace_id:
         return None
     
-    db = get_database()
-    workspace_doc = await db.workspaces.find_one({"_id": ObjectId(current_user.workspace_id)})
-    
+    workspace_doc = await get_workspace(current_user.workspace_id)
     if not workspace_doc:
         return None
-    
-    workspace_doc["id"] = str(workspace_doc["_id"])
-    return Workspace(**workspace_doc)
+    return Workspace(**{
+        "id": str(workspace_doc.id), "name": workspace_doc.name, "description": workspace_doc.description,
+        "owner_id": str(workspace_doc.owner_id), "sentry_api_token": workspace_doc.sentry_api_token,
+        "sentry_organization": workspace_doc.sentry_organization, "sentry_test_dsn": workspace_doc.sentry_test_dsn,
+        "openai_api_key": workspace_doc.openai_api_key, "settings": workspace_doc.workspace_settings,
+        "created_at": workspace_doc.created_at, "updated_at": workspace_doc.updated_at,
+    })
 
 class GenerateEventRequest(BaseModel):
     event_type: Optional[str] = Field(None, description="Type of event: error, warning, info, or random")

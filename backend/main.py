@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from config.settings import settings
-from app.models.database import connect_to_mongo, close_mongo_connection
+from app.models.database import connect_to_database, close_database_connection
 from app.api import issues, settings as settings_api, auth, workspaces, debug, sentry_events
 from app.services.sentry_monitoring import init_sentry
 from app.middleware.sentry_context import SentryContextMiddleware
@@ -54,12 +56,12 @@ async def startup_event():
     logger.info("Starting AI Sentry Issues Explainer API")
     if sentry_initialized:
         logger.info("Sentry monitoring enabled")
-    await connect_to_mongo()
+    await connect_to_database()
 
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down AI Sentry Issues Explainer API")
-    await close_mongo_connection()
+    await close_database_connection()
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["workspaces"])
@@ -77,6 +79,10 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

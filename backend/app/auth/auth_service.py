@@ -5,8 +5,13 @@ from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from config.settings import settings
 from app.models.schemas import User, UserResponse
-from app.models.database import get_database
-from bson import ObjectId
+from app.models.database import (
+    as_dict,
+    create_user as create_user_record,
+    find_user_by_id,
+    find_user_by_username,
+    find_user_by_username_or_email,
+)
 import logging
 from typing import Optional
 
@@ -34,19 +39,13 @@ class AuthService:
     
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """Authenticate user by username and password"""
-        db = get_database()
-        user_data = await db.users.find_one({"username": username})
-        
-        if not user_data:
+        record = await find_user_by_username(username)
+        if not record:
             return None
+        user_data = as_dict(record)
         
         if not self.verify_password(password, user_data["hashed_password"]):
             return None
-        
-
-        if "_id" in user_data:
-            user_data["id"] = str(user_data["_id"])
-            del user_data["_id"]
         
         return User(**user_data)
     
@@ -70,35 +69,20 @@ class AuthService:
             if user_id is None:
                 return None
             
-            db = get_database()
-            user_data = await db.users.find_one({"_id": ObjectId(user_id)})
-            
-            if user_data is None:
+            record = await find_user_by_id(user_id)
+            if record is None:
                 return None
-            
-
-            user_data["id"] = str(user_data["_id"])
-            del user_data["_id"]
-            
-            return User(**user_data)
+            return User(**as_dict(record))
             
         except JWTError:
             return None
     
     async def create_user(self, username: str, email: str, password: str, full_name: str = None, role: str = "developer") -> User:
         """Create new user"""
-        db = get_database()
-        
-
-        existing_user = await db.users.find_one({
-            "$or": [
-                {"username": username},
-                {"email": email}
-            ]
-        })
+        existing_user = await find_user_by_username_or_email(username, email)
         
         if existing_user:
-            if existing_user["username"] == username:
+            if existing_user.username == username:
                 raise HTTPException(status_code=400, detail="Username already exists")
             else:
                 raise HTTPException(status_code=400, detail="Email already exists")
@@ -120,12 +104,8 @@ class AuthService:
         }
         
 
-        result = await db.users.insert_one(user_data)
-        user_data["id"] = str(result.inserted_id)
-        if "_id" in user_data:
-            del user_data["_id"]
-        
-        return User(**user_data)
+        record = await create_user_record(**user_data)
+        return User(**as_dict(record))
 
 
 auth_service = AuthService()

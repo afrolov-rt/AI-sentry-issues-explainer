@@ -1,76 +1,57 @@
-version: '3.8'
-
 services:
-  mongodb:
-    image: mongo:7
-    container_name: sentry-ai-mongodb
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:27018:27017"
+  postgres:
+    image: postgres:16-alpine
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
-      MONGO_INITDB_DATABASE: sentry_ai_explainer
+      POSTGRES_DB: sentry_ai_explainer
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: sentry
     volumes:
-      - mongodb_data:/data/db
-    networks:
-      - sentry-ai-network
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentry -d sentry_ai_explainer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://sentry:sentry@postgres:5432/sentry_ai_explainer
+    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: sentry-ai-backend
-    restart: unless-stopped
     ports:
       - "127.0.0.1:8881:8000"
     environment:
-      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/sentry_ai_explainer?authSource=admin
-      - DATABASE_NAME=sentry_ai_explainer
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
-      - DEBUG=false
-      - ALLOWED_ORIGINS=*
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - APP_SENTRY_DSN=${APP_SENTRY_DSN}
-      - APP_SENTRY_ENVIRONMENT=production
-      - SENTRY_API_TOKEN=${SENTRY_API_TOKEN}
-      - SENTRY_ORG_SLUG=${SENTRY_ORG_SLUG}
+      DATABASE_URL: postgresql+asyncpg://sentry:sentry@postgres:5432/sentry_ai_explainer
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: "false"
+      ALLOWED_ORIGINS: http://localhost:3001
+      SECRET_KEY: ${SECRET_KEY:-change-me-before-production}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      APP_SENTRY_DSN: ${APP_SENTRY_DSN:-}
+      SENTRY_API_TOKEN: ${SENTRY_API_TOKEN:-}
+      SENTRY_ORG_SLUG: ${SENTRY_ORG_SLUG:-}
     depends_on:
-      - mongodb
-    volumes:
-      - ./backend:/app
-    networks:
-      - sentry-ai-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      migrate:
+        condition: service_completed_successfully
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: sentry-ai-frontend
-    restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8881/api/v1
-      - NODE_ENV=production
+      REACT_APP_API_URL: http://localhost:8881/api/v1
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - sentry-ai-network
 
 volumes:
-  mongodb_data:
-
-networks:
-  sentry-ai-network:
-    driver: bridge
+  postgres_data:
